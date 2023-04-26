@@ -1,14 +1,14 @@
 #Excess pore size width [0-0.866]
-eps: 0.866
+eps: 0.800
 
 #Set pressure or density (setting density>0 will overwrite pressure value)
 pressure: 1.0
-density: 1.5
+density: 1.66
 
 #Quantity to compute (1:Probability distribution, 2:Radial distribution function, 3:Structure factor)
-quantity: 2
+quantity: 3
 
 #Range in the form min max npoints
-min: 0
-max: 5
-npoints: 50
+min: 1
+max: 12
+npoints: 525

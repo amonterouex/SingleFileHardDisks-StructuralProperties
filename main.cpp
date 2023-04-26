@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int nsize = 251; //Keep this value fixed.
+    int nsize = 11; //Keep this value fixed.
     int nmax = 3; //Keep this value fixed.
    
     std::string tempvalue;
@@ -47,8 +47,8 @@ int main(int argc, char* argv[]) {
 
     //vectors to store results
     double xi;
-    double rstep = (indata.xmax-indata.xmin)/indata.npoints;
-    std::vector<double> xvalues(indata.npoints,0.0);
+    double rstep = (indata.xmax-indata.xmin)/(indata.npoints-1);
+    std::vector<double> rvalues(indata.npoints,0.0);
     std::vector<double> Fvalues(indata.npoints,0.0);
 
 
@@ -57,9 +57,9 @@ int main(int argc, char* argv[]) {
         double skmax = 0;
         double pkmax = 0;
         std::cout << "Computing..." <<std::endl;
-        for(int k=0;k<=indata.npoints;k++){
+        for(int k=0; k<indata.npoints; k++){
             xi = indata.xmin + k*rstep;
-            xvalues[k] = xi;
+            rvalues[k] = xi;
             Fvalues[k] = f.Sk(xi, f.bp);
 
             if (Fvalues[k] > skmax){
@@ -68,10 +68,11 @@ int main(int argc, char* argv[]) {
             }
 
              //Progress bar
-             ProgressBar(double(k)/double(indata.npoints),70);
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
 
         }
         std::cout << std::endl;
+
         std::cout << "Done!\n" << std::endl;
 
         //std::cout << std::fixed << std::setprecision(9) << "Peak of S()q= " << f.Density(f.bp) << " " << pkmax << std::endl;
@@ -79,8 +80,9 @@ int main(int argc, char* argv[]) {
         //Write results to file
         std::cout << "******************\nWriting results to file " << "output_Sq.txt" << std::endl;
         std::cout << "Formatting:\n q \t S(q)\n\n";
-        WriteToFile("output_Sq.txt", indata.npoints,&xvalues,&Fvalues);
+        WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
         std::cout << "******************" << std::endl;
+        //return 0;
     }
     //Compute Probability
     else if(indata.comValue==1){
@@ -95,14 +97,14 @@ int main(int argc, char* argv[]) {
 
         double normalization = 0.0; //To check normalization
         std::cout << "Computing..." <<std::endl;
-        for(int k=0;k<=indata.npoints;k++){
+        for(int k=0;k<indata.npoints;k++){
             xi = indata.xmin + k*rstep;
-            xvalues[k] = xi;
+            rvalues[k] = xi;
             //Probability Density
             Fvalues[k] = f.ProbDensity(xi,nn,f.bp);
             normalization += rstep*Fvalues[k];
              //Progress bar
-            ProgressBar(double(k)/double(indata.npoints),70);
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
 
         }
         std::cout << std::endl;
@@ -112,23 +114,23 @@ int main(int argc, char* argv[]) {
         //Write results to file
         std::cout << "******************\nWriting results to file " << "output_Pn.txt" << std::endl;
         std::cout << "Formatting:\n x \t Pn(x)\n\n";
-        WriteToFile("output_Pn.txt", indata.npoints,&xvalues,&Fvalues);
+        WriteToFile("output_Pn.txt", indata.npoints,&rvalues,&Fvalues);
         std::cout << "******************" << std::endl;
+        return 0;
     }
     else if (indata.comValue==2){    //Compute Gr
-
+        std::vector<double> Grtemp;
         std::vector<double> gvalues11(indata.npoints,0.0);
         std::vector<double> gvalues12(indata.npoints,0.0);
         std::vector<double> gvalues22(indata.npoints,0.0);
         std::vector<double> gvalues13(indata.npoints,0.0);
     
         auto begin = std::chrono::high_resolution_clock::now();
-
-        std::vector<double> Grtemp;
-        std::cout << "Computing..." <<std::endl;
-        for(int k=0;k<=indata.npoints;k++){
+        
+        std::cout << "Computing..." << std::endl;
+        for(int k=0;k<indata.npoints;k++){
             xi = indata.xmin + k*rstep;
-            xvalues[k] = xi;
+            rvalues[k] = xi;
             //g(r)
             if (xi < (nmax+1)*f.amin){
                 Grtemp = f.Gr(xi, f.bp, nmax);
@@ -148,7 +150,7 @@ int main(int argc, char* argv[]) {
             }
 
             //Progress bar
-            ProgressBar(double(k)/double(indata.npoints),70);
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
 
         }
         std::cout << std::endl;
@@ -156,19 +158,19 @@ int main(int argc, char* argv[]) {
 
         //Write results to file
         std::cout << "******************\nWriting results to file " << "output_Gx.txt" << std::endl;
-        std::cout << "Formatting:\n x \t G(x)\n\ng";
+        std::cout << "Formatting:\n x \t G(x)\n\n";
         std::ofstream ofile;
         ofile.open("output_Gx.txt");
         for(int k=0;k<(int)indata.npoints;k++){
-            ofile << xvalues[k] << "\t" << Fvalues[k] << " " << gvalues11[k] << " " << gvalues12[k]<< " " << gvalues13[k]<< " " << gvalues22[k] << "\n";
-            //ofile << rvalues[k] << "\t" << gvalues[k] << "\n";
+            ofile << rvalues[k] << "\t" << Fvalues[k] << " " << gvalues11[k] << " " << gvalues12[k]<< " " << gvalues13[k]<< " " << gvalues22[k] << "\n";
         }
         ofile.close();
         std::cout << "******************" << std::endl;
+        return 0;
     }
 
-    std::cout << "\n Press enter to exit \n" << std::endl;
-    std::cin.get();
+    //std::cout << "\n Press enter to exit \n" << std::endl;
+    //std::cin.get();
 
   return 0;
 }

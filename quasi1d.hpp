@@ -8,6 +8,7 @@
 #ifndef QUASI1D_H_INCLUDED
 #define QUASI1D_H_INCLUDED
 
+//Efficient way of computing binomial coefficients
 double binomialCoefficients(int n, int k) {
    double C[k+1];
    memset(C, 0, sizeof(C));
@@ -19,16 +20,18 @@ double binomialCoefficients(int n, int k) {
    return C[k];
 }
 
-class Quasi1d {       // The class
-  public:             // Access specifier
-    int nsize;
-    double eps;
-    double bp;
-    double amin;
+//Class Quasi1d
+class Quasi1d {       
+  public:             
+    int nsize; //size of the discretization (number of species).
+    double eps; //excess width of the pore
+    double bp; //pressure
+    double amin; //min distance between two particles
 
-    double Lmean;
-    Eigen::Matrix<double, Eigen::Dynamic, 1> xvalues;
+    double Lmean; //Lmean coming from the eigenvalue equation.
+    Eigen::Matrix<double, Eigen::Dynamic, 1> xvalues; //vector of molar fractions.
 
+    //Constructor
     Quasi1d(int nsize0, double eps0){
         nsize = nsize0;
         eps = eps0;
@@ -45,6 +48,7 @@ class Quasi1d {       // The class
         
     }
 
+    //Set pressure of the system and update xvalues and Lmean.
     int SetPressure(double bp0){
         //Create matrix M
         for (int i=0; i<nsize; i++){
@@ -53,6 +57,7 @@ class Quasi1d {       // The class
             }
         }
 
+        //Solve eigenvalue equation
         double eigval;
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> es;
         es.compute(M);
@@ -73,9 +78,11 @@ class Quasi1d {       // The class
 
     }
 
+    //If instead of pressure the user wishes to set the density, use this function.
     void SetDensity(double rho){
+        //Bolzano method to compute the pressure associated with that density
         double a = 0.000001;
-        double b=100;
+        double b=120;
   
         double c = a;
         while ((b-a) >= 0.0000001){
@@ -87,8 +94,15 @@ class Quasi1d {       // The class
             if ((Density(c)-rho)*(Density(a)-rho) < 0)   b = c;
             else  a = c;
         }
-             
+
+        if (abs(c-120.0)<=0.0001){
+            std::cout << "WARNING: required density set too high, numerical errors might occur. Setting new density to " << Density(c) << std::endl;
+        }
+
+        //Set the corresponding pressure
         SetPressure(c);
+
+
     }
 
     // Compute density of the system at a certain bp
@@ -465,7 +479,7 @@ class Quasi1d {       // The class
             h++;
         }
 
-        if (sa > 0){
+        if (sa >= 0){
             return exp(-bp0*x)*pow(sa, n-1.0)/tgamma(n); //tgamma(n+1)=factorial(n)
         }
         else{

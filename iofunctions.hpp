@@ -24,19 +24,20 @@ void WriteToFile(std::string, int, std::vector<double>*, std::vector<double>*);
 void ProgressBar(double, int);
 
 
-
+//Read input.dat file and store all info in a struct of type InputData.
 int ReadInputFile(std::string infile, InputData *indata){
-    //Read input file
     std::ifstream inFile;
     //Open file
     inFile.open(infile);
     if (!inFile.is_open()){
+        //If file could not be found, write an example for the user
         WriteInputFileText();
         std::cout << "Could not file input.dat. A new standard input file has been generated to work with. Please use that file to change parameters of the system" << std::endl;
         return 1;
     }
     int lineNum = 0;
     std::string line;
+    //Read all data and store it in the struct indata
     while (std::getline(inFile, line))
     {
         std::istringstream iss(line);
@@ -62,6 +63,7 @@ int ReadInputFile(std::string infile, InputData *indata){
     return 0;
 }
 
+//Check that all data that was entered matches the requirements.
 int CheckData(InputData *indata){
     std::cout << "*************************\n SYSTEM INFO:" <<std::endl;
     double density_max = 1.0/sqrt(1.0-indata->eps*indata->eps);
@@ -129,6 +131,7 @@ int CheckData(InputData *indata){
     return 0;
 }
 
+//Write an example of an input file for the user to know
 void WriteInputFileText(){
     std::ofstream ofile;
     ofile.open("./input.dat");
@@ -149,16 +152,18 @@ void WriteInputFileText(){
     ofile.close();
 }
 
-void WriteToFile(std::string outfile, int npoints, std::vector<double> *xvalues, std::vector<double> *Fvalues){
+//Write data to an output file
+void WriteToFile(std::string outfile, int npoints, std::vector<double> *rvalues, std::vector<double> *Fvalues){
             //Write results to file
         std::ofstream ofile;
         ofile.open(outfile);
-        for(int k=0; k<npoints; k++){
-            ofile << xvalues->at(k) << "\t" << Fvalues->at(k) << "\n";
+        for(int kk=0; kk<npoints; kk++){
+            ofile << rvalues->at(kk) << "\t" << Fvalues->at(kk) << "\n";
         }
         ofile.close();
 }
 
+//Progress bar
 void ProgressBar(double progress, int bwidth){
     int pos = bwidth*progress;
     std::cout << "[";
