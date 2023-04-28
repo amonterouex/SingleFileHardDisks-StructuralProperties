@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int nsize = 11; //Keep this value fixed.
+    int nsize = 251; //Keep this value fixed.
     int nmax = 3; //Keep this value fixed.
    
     std::string tempvalue;

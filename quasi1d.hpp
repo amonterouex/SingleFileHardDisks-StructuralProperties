@@ -31,6 +31,8 @@ class Quasi1d {
     double Lmean; //Lmean coming from the eigenvalue equation.
     Eigen::Matrix<double, Eigen::Dynamic, 1> xvalues; //vector of molar fractions.
 
+    int nprocs = omp_get_num_procs();
+
     //Constructor
     Quasi1d(int nsize0, double eps0){
         nsize = nsize0;
@@ -191,7 +193,7 @@ class Quasi1d {
 
         double density = Density(bp);
         T dummy = 0.0;
-        #pragma omp parallel for reduction(+:gmeanRE,gmeanIM) num_threads(16) private(dummy)
+        #pragma omp parallel for reduction(+:gmeanRE,gmeanIM) num_threads(nprocs) private(dummy)
         for (int i=0; i<nsize; i++){
             for(int j=i; j<nsize; j++){
                 dummy = sqrt(xvalues(i)*xvalues(j))*Qt(i,j);
@@ -382,7 +384,8 @@ class Quasi1d {
         if (bp0 != bp)  SetPressure(bp0);
         
         double gtotal = 0.0;
-        #pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
+
+        #pragma omp parallel for reduction(+:gtotal) num_threads(nprocs) schedule(dynamic)
         for (int ix=0; ix<nsize; ix++){
             for(int jx=ix; jx<nsize; jx++){
                 if (ix!=jx){
