@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Formatting:\n q \t S(q)\n\n";
         WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
         std::cout << "******************" << std::endl;
-        //return 0;
+
     }
     //Compute Probability
     else if(indata.comValue==1){
@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Formatting:\n x \t Pn(x)\n\n";
         WriteToFile("output_Pn.txt", indata.npoints,&rvalues,&Fvalues);
         std::cout << "******************" << std::endl;
-        return 0;
+
     }
     else if (indata.comValue==2){    //Compute Gr
         std::vector<double> Grtemp;
@@ -166,7 +166,6 @@ int main(int argc, char* argv[]) {
         }
         ofile.close();
         std::cout << "******************" << std::endl;
-        return 0;
     }
 
     //std::cout << "\n Press enter to exit \n" << std::endl;
