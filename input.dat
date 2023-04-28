@@ -3,12 +3,12 @@ eps: 0.5
 
 #Set pressure or density (setting density>0 will overwrite pressure value)
 pressure: 1.0
-density: 1.1111
+density: 0.0
 
 #Quantity to compute (1:Probability distribution, 2:Radial distribution function, 3:Structure factor)
-quantity: 3
+quantity: 1
 
 #Range in the form min max npoints
 min: 0.0
-max: 12
-npoints: 525
+max: 5.0
+npoints: 100
