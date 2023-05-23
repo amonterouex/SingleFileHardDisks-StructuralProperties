@@ -120,8 +120,8 @@ class Quasi1d {
         return -1.0/nsum;
     }
 
-    // Compute Gir(r) analiticamente para un nmax
-    double Gijr(double x, double bp0, int nmax, int i, int j){
+    // Compute Gir(x) analiticamente para un nmax
+    double Gijx(double x, double bp0, int nmax, int i, int j){
         if (bp0 != bp)  SetPressure(bp0);
         //Optimizacion: vemos en que capa de proximos vecinos cae x y ajustamos el valor de nmax si es necesario
 
@@ -135,8 +135,8 @@ class Quasi1d {
         return gij;
     }
 
-    // Compute global G(r)
-    std::vector<double> Gr(double x, double bp0, int nmax){
+    // Compute global G(x)
+    std::vector<double> Gx(double x, double bp0, int nmax){
         if (bp0 != bp)  SetPressure(bp0);
         std::vector<double> gtotal = std::vector<double>(5,0.0);
 
@@ -151,18 +151,18 @@ class Quasi1d {
         #pragma omp parallel for reduction(+:gmean) num_threads(16) schedule(dynamic)
         for (int ix=0; ix<nsize; ix++){
             for(int jx=ix; jx<nsize; jx++){
-                //gtemp = Gijr(x,bp0,nmax,ix,jx);
+                //gtemp = Gijx(x,bp0,nmax,ix,jx);
                 if (ix!=jx){
-                    gmean += 2.0*xvalues(ix)*xvalues(jx)*Gijr(x,bp0,nmax,ix,jx);
+                    gmean += 2.0*xvalues(ix)*xvalues(jx)*Gijx(x,bp0,nmax,ix,jx);
                 }
                 else{
-                    gmean += xvalues(ix)*xvalues(jx)*Gijr(x,bp0,nmax,ix,jx);
+                    gmean += xvalues(ix)*xvalues(jx)*Gijx(x,bp0,nmax,ix,jx);
                 } 
                 //Get partials G(r)
-                if(ix==0 && jx==0)          gtotal[1] = Gijr(x,bp0,nmax,ix,jx);
-                else if(ix==0 && jx==(nsize+1)/2) gtotal[2] = Gijr(x,bp0,nmax,ix,jx);
-                else if(ix==0 && jx==nsize-1)    gtotal[3] = Gijr(x,bp0,nmax,ix,jx);
-                else if(ix==(nsize+1)/2 && jx==(nsize+1)/2) gtotal[4] = Gijr(x,bp0,nmax,ix,jx);
+                if(ix==0 && jx==0)          gtotal[1] = Gijx(x,bp0,nmax,ix,jx);
+                else if(ix==0 && jx==(nsize+1)/2) gtotal[2] = Gijx(x,bp0,nmax,ix,jx);
+                else if(ix==0 && jx==nsize-1)    gtotal[3] = Gijx(x,bp0,nmax,ix,jx);
+                else if(ix==(nsize+1)/2 && jx==(nsize+1)/2) gtotal[4] = Gijx(x,bp0,nmax,ix,jx);
             }
 
         }
@@ -262,7 +262,7 @@ class Quasi1d {
     }
 
     //Gr calculated from numerical Laplace inverse of G(s)
-    std::vector<double> GrInv(double t, double bp0, int ntr, int meuler){
+    std::vector<double> GxInv(double t, double bp0, int ntr, int meuler){
         double aa=30.0;
         double hh = M_PI/t;
 
@@ -341,7 +341,7 @@ class Quasi1d {
     }
 
         //Gr calculated from numerical Laplace inverse of G(s)
-    double GijrInv(double t, double bp0, int ntr, int meuler, int ii, int jj){
+    double GijxInv(double t, double bp0, int ntr, int meuler, int ii, int jj){
         double aa=30.0;
         double hh = M_PI/t;
 

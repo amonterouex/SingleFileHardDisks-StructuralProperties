@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
             rvalues[k] = xi;
             //g(r)
             if (xi < (nmax+1)*f.amin){
-                Grtemp = f.Gr(xi, f.bp, nmax);
+                Grtemp = f.Gx(xi, f.bp, nmax);
                 Fvalues[k] = Grtemp[0];
                 gvalues11[k] = Grtemp[1];
                 gvalues13[k] = Grtemp[3];
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
                 gvalues22[k] = Grtemp[4];
             }
             else{
-                Grtemp = f.GrInv(xi, f.bp, 100,30);
+                Grtemp = f.GxInv(xi, f.bp, 100,30);
                 Fvalues[k] = Grtemp[0];
                 gvalues11[k] = Grtemp[1];
                 gvalues13[k] = Grtemp[3];
