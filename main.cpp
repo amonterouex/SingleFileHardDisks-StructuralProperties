@@ -29,7 +29,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int nsize = 251; //Keep this value fixed.
+    int nsize;
+    if (indata.comValue==4){
+        nsize = 151; //Keep this value fixed.
+    }
+    else{
+        nsize = 251;
+    }
+    
     int nmax = 3; //Keep this value fixed.
    
     std::string tempvalue;
@@ -165,6 +172,44 @@ int main(int argc, char* argv[]) {
         WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
         std::cout << "******************" << std::endl;
 
+    }
+    else if (indata.comValue==4){    //Compute Gr
+
+        
+        double Grtemp;
+        
+        std::cout << "Computing..." << std::endl;
+        for(int k=0;k<indata.npoints;k++){
+            xi = indata.xmin + k*rstep;
+            rvalues[k] = xi;
+            //g(r)
+            if (xi < (nmax+1)*f.amin){
+                Grtemp = f.Gr(xi, f.bp, nmax,1);
+                Fvalues[k] = Grtemp;
+            }
+            else{
+                Grtemp = f.GrInv(xi, f.bp, 100,30);
+                Fvalues.at(k) = Grtemp;          
+            }
+
+            //Progress bar
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
+
+        }
+        
+        std::cout << std::endl;
+        std::cout << "Done!\n" << std::endl;
+
+        //Write results to file
+        std::cout << "******************\nWriting results to file " << "output_Gr.txt" << std::endl;
+        std::cout << "Formatting:\n r \t G(r)\n\n";
+        std::ofstream ofile;
+        ofile.open("output_Gr.txt");
+        for(int k=0;k<(int)indata.npoints;k++){
+            ofile << rvalues[k] << "\t" << Fvalues[k] << "\n";
+        }
+        ofile.close();
+        std::cout << "******************" << std::endl;
     }
 
     //std::cout << "\n Press enter to exit \n" << std::endl;

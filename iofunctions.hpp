@@ -99,8 +99,8 @@ int CheckData(InputData *indata){
     
         }
     }
-    if(indata->comValue!=1 && indata->comValue!=2 && indata->comValue!=3){
-        std::cout << "ERROR: Wrong choice of number" << std::endl;
+    if(indata->comValue!=1 && indata->comValue!=2 && indata->comValue!=3 && indata->comValue!=4){
+        std::cout << "ERROR: Wrong choice of computing quantity parameter" << std::endl;
         return 1;
         }
         else{
