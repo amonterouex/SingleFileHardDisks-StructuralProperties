@@ -51,41 +51,8 @@ int main(int argc, char* argv[]) {
     std::vector<double> rvalues(indata.npoints,0.0);
     std::vector<double> Fvalues(indata.npoints,0.0);
 
-
-    if(indata.comValue==3){
-         
-        double skmax = 0;
-        double pkmax = 0;
-        std::cout << "Computing..." <<std::endl;
-        for(int k=0; k<indata.npoints; k++){
-            xi = indata.xmin + k*rstep;
-            rvalues[k] = xi;
-            Fvalues[k] = f.Sk(xi, f.bp);
-
-            if (Fvalues[k] > skmax){
-                skmax = Fvalues[k];
-                pkmax = xi;
-            }
-
-             //Progress bar
-            ProgressBar(double(k)/(double(indata.npoints)-1),70);
-
-        }
-        std::cout << std::endl;
-
-        std::cout << "Done!\n" << std::endl;
-
-        //std::cout << std::fixed << std::setprecision(9) << "Peak of S()q= " << f.Density(f.bp) << " " << pkmax << std::endl;
-
-        //Write results to file
-        std::cout << "******************\nWriting results to file " << "output_Sq.txt" << std::endl;
-        std::cout << "Formatting:\n q \t S(q)\n\n";
-        WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
-        std::cout << "******************" << std::endl;
-
-    }
     //Compute Probability
-    else if(indata.comValue==1){
+    if(indata.comValue==1){
         //Ask for what you want to compute.
         std::cout << "Which n-neighbor distribution do you want to compute (1, 2 or 3)?: ";
         std::getline(std::cin, tempvalue);
@@ -166,6 +133,38 @@ int main(int argc, char* argv[]) {
         }
         ofile.close();
         std::cout << "******************" << std::endl;
+    }
+    else if(indata.comValue==3){
+         
+        double skmax = 0;
+        double pkmax = 0;
+        std::cout << "Computing..." <<std::endl;
+        for(int k=0; k<indata.npoints; k++){
+            xi = indata.xmin + k*rstep;
+            rvalues[k] = xi;
+            Fvalues[k] = f.Sk(xi, f.bp);
+
+            if (Fvalues[k] > skmax){
+                skmax = Fvalues[k];
+                pkmax = xi;
+            }
+
+             //Progress bar
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
+
+        }
+        std::cout << std::endl;
+
+        std::cout << "Done!\n" << std::endl;
+
+        //std::cout << std::fixed << std::setprecision(9) << "Peak of S()q= " << f.Density(f.bp) << " " << pkmax << std::endl;
+
+        //Write results to file
+        std::cout << "******************\nWriting results to file " << "output_Sq.txt" << std::endl;
+        std::cout << "Formatting:\n q \t S(q)\n\n";
+        WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
+        std::cout << "******************" << std::endl;
+
     }
 
     //std::cout << "\n Press enter to exit \n" << std::endl;
