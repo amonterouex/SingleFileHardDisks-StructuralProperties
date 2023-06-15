@@ -172,31 +172,31 @@ class Quasi1d {
 
     // Compute G(s)
     template<class T>
-    std::vector<T> Gs(T s, double bp0){
+    std::vector<T> Gs(T s, double bp0, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
         if (bp0 != bp)  SetPressure(bp0);
         std::vector<T> gtotal = std::vector<T>(5,0.0);
 
         for (int i=0; i<nsize; i++){
             for(int j=0; j<nsize; j++){
-                Qt(i,j) = Lmean*omega<T>(s+bp0,i,j);
-                Qtm(i,j) = -Qt(i,j);
-                if(i==j) Qtm(i,j) = 1.0+Qtm(i,j);
+                Qtt(i,j) = Lmean*omega<T>(s+bp0,i,j);
+                Qttm(i,j) = -Qtt(i,j);
+                if(i==j) Qttm(i,j) = 1.0+Qttm(i,j);
 
             }
         }
 
         //Invert matrix and all that
-        Qt = Qt*(Qtm.inverse());
+        Qtt = Qtt*(Qttm.inverse());
         T gmean = 0;
         double gmeanRE = 0;
         double gmeanIM = 0;
 
         double density = Density(bp);
         T dummy = 0.0;
-        #pragma omp parallel for reduction(+:gmeanRE,gmeanIM) num_threads(nprocs) private(dummy)
+        //#pragma omp parallel for reduction(+:gmeanRE,gmeanIM) num_threads(nprocs) private(dummy)
         for (int i=0; i<nsize; i++){
             for(int j=i; j<nsize; j++){
-                dummy = sqrt(xvalues(i)*xvalues(j))*Qt(i,j);
+                dummy = sqrt(xvalues(i)*xvalues(j))*Qtt(i,j);
                 if (i!=j){
                     gmeanRE += std::real(2.0*dummy);
                     gmeanIM += std::imag(2.0*dummy);
@@ -206,10 +206,10 @@ class Quasi1d {
                     gmeanIM += std::imag(dummy);
                 }
                 //Get partials G(r)
-                if(i==0 && j==0)          gtotal[1] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
-                else if(i==0 && j==(nsize+1)/2) gtotal[2] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
-                else if(i==0 && j==nsize-1)    gtotal[3] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
-                else if(i==(nsize+1)/2 && j==(nsize+1)/2) gtotal[4] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                if(i==0 && j==0)          gtotal[1] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                else if(i==0 && j==(nsize+1)/2) gtotal[2] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                else if(i==0 && j==nsize-1)    gtotal[3] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                else if(i==(nsize+1)/2 && j==(nsize+1)/2) gtotal[4] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
             }
         }
         if constexpr (std::is_same_v<T, std::complex<double>>){
@@ -232,7 +232,7 @@ class Quasi1d {
         Eigen::Matrix<T,Eigen::Dynamic, Eigen::Dynamic> Qtm;
         Qt.resize(nsize,nsize);
         Qtm.resize(nsize,nsize);
-        #pragma omp parallel for num_threads(16)
+        //#pragma omp parallel for num_threads(nprocs)
         for (int i=0; i<nsize; i++){
             for(int j=i; j<nsize; j++){
                 Qt(i,j) = Lmean*omega<T>(s+bp0,i,j);

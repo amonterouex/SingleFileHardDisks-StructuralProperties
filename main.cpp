@@ -106,7 +106,8 @@ int main(int argc, char* argv[]) {
         double kmax = 0.0;
 
         std::cout << "Computing..." << std::endl;
-#pragma omp parallel for num_threads(16) schedule(dynamic)
+        #pragma omp parallel for num_threads(16) schedule(dynamic)
+        //#pragma omp for
         for(int k=0;k<indata.npoints;k++){
             Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
             Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
@@ -124,7 +125,7 @@ int main(int argc, char* argv[]) {
                 gvalues22[k] = Grtemp[4];
             }
             else{
-                Grtemp = f.GxInv(xi, f.bp, 100,30);
+                Grtemp = f.GxInv(xi, f.bp, 600,150,Qtt, Qttm);
                 Fvalues[k] = Grtemp[0];
                 gvalues11[k] = Grtemp[1];
                 gvalues13[k] = Grtemp[3];
