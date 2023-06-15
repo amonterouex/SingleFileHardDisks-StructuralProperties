@@ -75,7 +75,7 @@ class Quasi1d {
         xvalues /= sum;
 
         //Update internal bp
-        bp = bp0;
+        this->bp = bp0;
         return 0;
 
     }
@@ -84,7 +84,7 @@ class Quasi1d {
     void SetDensity(double rho){
         //Bolzano method to compute the pressure associated with that density
         double a = 0.000001;
-        double b=120;
+        double b=170;
   
         double c = a;
         while ((b-a) >= 0.0000001){
@@ -97,7 +97,7 @@ class Quasi1d {
             else  a = c;
         }
 
-        if (abs(c-120.0)<=0.0001){
+        if (abs(c-170.0)<=0.0001){
             std::cout << "WARNING: required density set too high, numerical errors might occur. Setting new density to " << Density(c) << std::endl;
         }
 
@@ -148,7 +148,7 @@ class Quasi1d {
         double gtemp = 0.0;
         double gmean = 0.0;
         
-        #pragma omp parallel for reduction(+:gmean) num_threads(16) schedule(dynamic)
+        //#pragma omp parallel for reduction(+:gmean) num_threads(16) schedule(dynamic)
         for (int ix=0; ix<nsize; ix++){
             for(int jx=ix; jx<nsize; jx++){
                 //gtemp = Gijx(x,bp0,nmax,ix,jx);
@@ -253,23 +253,23 @@ class Quasi1d {
     }
 
     //Compute S(k)
-    double Sk(double k, double bp0){
+    double Sk(double k, double bp0, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
         if (bp0 != bp)  SetPressure(bp0);
         double stotal = 0;
 
-        return 1.0 + Density(bp0)*std::real(Gs<std::complex<double>>(std::complex<double>(0.0,k),bp0)[0]+Gs<std::complex<double>>(std::complex<double>(0.0,-k),bp0)[0]);
+        return 1.0 + Density(bp0)*std::real(Gs<std::complex<double>>(std::complex<double>(0.0,k),bp0,Qtt, Qttm)[0]+Gs<std::complex<double>>(std::complex<double>(0.0,-k),bp0, Qtt, Qttm)[0]);
 
     }
 
     //G(x) calculated from numerical Laplace inverse of G(s)
-    std::vector<double> GxInv(double t, double bp0, int ntr, int meuler){
+    std::vector<double> GxInv(double t, double bp0, int ntr, int meuler, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
         double aa=30.0;
         double hh = M_PI/t;
 
         double uu = exp(aa/2.0)/t;
         double xx = aa/(2.0*t);
         //Sum[]
-        std::vector<std::complex<double>> Gstemp = Gs<std::complex<double>>(xx,bp0);
+        std::vector<std::complex<double>> Gstemp = Gs<std::complex<double>>(xx,bp0,Qtt, Qttm);
         std::complex<double> suma = Gstemp[0]/2.0;
         std::complex<double> suma1 = Gstemp[1]/2.0;
         std::complex<double> suma2 = Gstemp[2]/2.0;
@@ -278,7 +278,7 @@ class Quasi1d {
 
         std::complex<double> dummy;
         for (int i=1;i<ntr+1;i++){
-            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx, i*hh),bp0);
+            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx, i*hh),bp0,Qtt, Qttm);
             dummy = std::complex<double>(pow(-1,i),0);
             suma += dummy * Gstemp[0];
             suma1 += dummy * Gstemp[1];
@@ -310,7 +310,7 @@ class Quasi1d {
         for(int i=0;i<meuler+1;i++){
             double nn = ntr+i+1.0;
             dummy = pow(-1,nn);
-            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx,nn*hh),bp0);
+            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx,nn*hh),bp0,Qtt, Qttm);
             su[i+1] = su[i] + dummy * Gstemp[0];
             su1[i+1] = su1[i] + dummy * Gstemp[1];
             su2[i+1] = su2[i] + dummy * Gstemp[2];
@@ -411,7 +411,7 @@ class Quasi1d {
         if (nshell == 0) return gtotal;
         else if (nshell < nmax)  nmax = nshell; //keep lowest n value because they are going to yield the same result
         
-        #pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
+        //#pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
         for (int ix=0; ix<nsize; ix++){
             for(int jx=ix; jx<nsize; jx++){
                 if (ix!=jx){
@@ -433,7 +433,7 @@ class Quasi1d {
 
         double dy2 = (eps/(nsize-1))*(eps/(nsize-1));
 
-        #pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
+        //#pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
         for (int k=0; k<nsize; k++){
                 Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
                 Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;

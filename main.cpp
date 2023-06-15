@@ -45,11 +45,14 @@ int main(int argc, char* argv[]) {
     if (indata.density>0.0){
         f.SetDensity(indata.density);
         std::cout << "The pressure of the system has been set to " << f.bp << std::endl;
+        std::cout << "The compressiblity factor is " << f.bp/indata.density << std::endl;
         indata.bp = f.bp;
     }
     else{
         f.SetPressure(indata.bp);
-        std::cout << "The density of the system has been set to " << f.Density(indata.bp) << std::endl;
+        double density = f.Density(indata.bp);
+        std::cout << "The density of the system has been set to " << density << std::endl;
+        std::cout << "The compressiblity factor is " << f.bp/density << std::endl;
     }
 
     //vectors to store results
@@ -100,9 +103,15 @@ int main(int argc, char* argv[]) {
         std::vector<double> gvalues13(indata.npoints,0.0);
     
         auto begin = std::chrono::high_resolution_clock::now();
-        
+        double kmax = 0.0;
+
         std::cout << "Computing..." << std::endl;
+#pragma omp parallel for num_threads(16) schedule(dynamic)
         for(int k=0;k<indata.npoints;k++){
+            Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
+            Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
+            Qtt.resize(f.nsize,f.nsize);
+            Qttm.resize(f.nsize,f.nsize);
             xi = indata.xmin + k*rstep;
             rvalues[k] = xi;
             //g(r)
@@ -124,7 +133,9 @@ int main(int argc, char* argv[]) {
             }
 
             //Progress bar
-            ProgressBar(double(k)/(double(indata.npoints)-1),70);
+            #pragma omp critical
+            ProgressBar(double(k)/(double(indata.npoints)-1),70,&kmax);
+            //std::cout << k << std::endl;
 
         }
         std::cout << std::endl;
@@ -136,7 +147,7 @@ int main(int argc, char* argv[]) {
         std::ofstream ofile;
         ofile.open("output_Gx.txt");
         for(int k=0;k<(int)indata.npoints;k++){
-            ofile << rvalues[k] << "\t" << Fvalues[k] << " " << gvalues11[k] << " " << gvalues12[k]<< " " << gvalues13[k]<< " " << gvalues22[k] << "\n";
+            ofile << std::fixed<< std::setprecision(15) << rvalues[k] << "\t" << Fvalues[k] << " " << gvalues11[k] << " " << gvalues12[k]<< " " << gvalues13[k]<< " " << gvalues22[k] << "\n";
         }
         ofile.close();
         std::cout << "******************" << std::endl;
@@ -146,10 +157,14 @@ int main(int argc, char* argv[]) {
         double skmax = 0;
         double pkmax = 0;
         std::cout << "Computing..." <<std::endl;
+        Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
+        Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
+        Qtt.resize(f.nsize,f.nsize);
+        Qttm.resize(f.nsize,f.nsize);
         for(int k=0; k<indata.npoints; k++){
             xi = indata.xmin + k*rstep;
             rvalues[k] = xi;
-            Fvalues[k] = f.Sk(xi, f.bp);
+            Fvalues[k] = f.Sk(xi, f.bp, Qtt, Qttm);
 
             if (Fvalues[k] > skmax){
                 skmax = Fvalues[k];

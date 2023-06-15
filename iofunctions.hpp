@@ -164,6 +164,22 @@ void WriteToFile(std::string outfile, int npoints, std::vector<double> *rvalues,
 }
 
 //Progress bar
+void ProgressBar(double progress, int bwidth,double *kmax){
+    int pos = bwidth*progress;
+    if (progress > *kmax){
+        *kmax = progress;
+        std::cout << "[";
+        for (int i = 0; i < bwidth; ++i) {
+            if (i < pos) std::cout << "=";
+            else if (i == pos) std::cout << ">";
+            else std::cout << " ";
+        }
+        std::cout << "] " << int(progress * 100.0) << " %\r";
+        std::cout.flush();
+    }
+}
+
+//Progress bar
 void ProgressBar(double progress, int bwidth){
     int pos = bwidth*progress;
     std::cout << "[";
