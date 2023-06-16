@@ -107,7 +107,6 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Computing..." << std::endl;
         #pragma omp parallel for num_threads(16) schedule(dynamic)
-        //#pragma omp for
         for(int k=0;k<indata.npoints;k++){
             Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
             Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
