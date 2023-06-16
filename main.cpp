@@ -29,7 +29,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int nsize = 251; //Keep this value fixed.
+    int nsize;
+    if (indata.comValue==4){
+        nsize = 151; //Keep this value fixed.
+    }
+    else{
+        nsize = 251;
+    }
+    
     int nmax = 3; //Keep this value fixed.
    
     std::string tempvalue;
@@ -38,11 +45,14 @@ int main(int argc, char* argv[]) {
     if (indata.density>0.0){
         f.SetDensity(indata.density);
         std::cout << "The pressure of the system has been set to " << f.bp << std::endl;
+        std::cout << "The compressiblity factor is " << f.bp/indata.density << std::endl;
         indata.bp = f.bp;
     }
     else{
         f.SetPressure(indata.bp);
-        std::cout << "The density of the system has been set to " << f.Density(indata.bp) << std::endl;
+        double density = f.Density(indata.bp);
+        std::cout << "The density of the system has been set to " << density << std::endl;
+        std::cout << "The compressiblity factor is " << f.bp/density << std::endl;
     }
 
     //vectors to store results
@@ -51,41 +61,8 @@ int main(int argc, char* argv[]) {
     std::vector<double> rvalues(indata.npoints,0.0);
     std::vector<double> Fvalues(indata.npoints,0.0);
 
-
-    if(indata.comValue==3){
-         
-        double skmax = 0;
-        double pkmax = 0;
-        std::cout << "Computing..." <<std::endl;
-        for(int k=0; k<indata.npoints; k++){
-            xi = indata.xmin + k*rstep;
-            rvalues[k] = xi;
-            Fvalues[k] = f.Sk(xi, f.bp);
-
-            if (Fvalues[k] > skmax){
-                skmax = Fvalues[k];
-                pkmax = xi;
-            }
-
-             //Progress bar
-            ProgressBar(double(k)/(double(indata.npoints)-1),70);
-
-        }
-        std::cout << std::endl;
-
-        std::cout << "Done!\n" << std::endl;
-
-        //std::cout << std::fixed << std::setprecision(9) << "Peak of S()q= " << f.Density(f.bp) << " " << pkmax << std::endl;
-
-        //Write results to file
-        std::cout << "******************\nWriting results to file " << "output_Sq.txt" << std::endl;
-        std::cout << "Formatting:\n q \t S(q)\n\n";
-        WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
-        std::cout << "******************" << std::endl;
-
-    }
     //Compute Probability
-    else if(indata.comValue==1){
+    if(indata.comValue==1){
         //Ask for what you want to compute.
         std::cout << "Which n-neighbor distribution do you want to compute (1, 2 or 3)?: ";
         std::getline(std::cin, tempvalue);
@@ -126,14 +103,20 @@ int main(int argc, char* argv[]) {
         std::vector<double> gvalues13(indata.npoints,0.0);
     
         auto begin = std::chrono::high_resolution_clock::now();
-        
+        double kmax = 0.0;
+
         std::cout << "Computing..." << std::endl;
+        #pragma omp parallel for num_threads(16) schedule(dynamic)
         for(int k=0;k<indata.npoints;k++){
+            Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
+            Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
+            Qtt.resize(f.nsize,f.nsize);
+            Qttm.resize(f.nsize,f.nsize);
             xi = indata.xmin + k*rstep;
             rvalues[k] = xi;
             //g(r)
             if (xi < (nmax+1)*f.amin){
-                Grtemp = f.Gr(xi, f.bp, nmax);
+                Grtemp = f.Gx(xi, f.bp, nmax);
                 Fvalues[k] = Grtemp[0];
                 gvalues11[k] = Grtemp[1];
                 gvalues13[k] = Grtemp[3];
@@ -141,7 +124,7 @@ int main(int argc, char* argv[]) {
                 gvalues22[k] = Grtemp[4];
             }
             else{
-                Grtemp = f.GrInv(xi, f.bp, 100,30);
+                Grtemp = f.GxInv(xi, f.bp, 600,150,Qtt, Qttm);
                 Fvalues[k] = Grtemp[0];
                 gvalues11[k] = Grtemp[1];
                 gvalues13[k] = Grtemp[3];
@@ -150,7 +133,9 @@ int main(int argc, char* argv[]) {
             }
 
             //Progress bar
-            ProgressBar(double(k)/(double(indata.npoints)-1),70);
+            #pragma omp critical
+            ProgressBar(double(k)/(double(indata.npoints)-1),70,&kmax);
+            //std::cout << k << std::endl;
 
         }
         std::cout << std::endl;
@@ -162,7 +147,81 @@ int main(int argc, char* argv[]) {
         std::ofstream ofile;
         ofile.open("output_Gx.txt");
         for(int k=0;k<(int)indata.npoints;k++){
-            ofile << rvalues[k] << "\t" << Fvalues[k] << " " << gvalues11[k] << " " << gvalues12[k]<< " " << gvalues13[k]<< " " << gvalues22[k] << "\n";
+            ofile << std::fixed<< std::setprecision(15) << rvalues[k] << "\t" << Fvalues[k] << " " << gvalues11[k] << " " << gvalues12[k]<< " " << gvalues13[k]<< " " << gvalues22[k] << "\n";
+        }
+        ofile.close();
+        std::cout << "******************" << std::endl;
+    }
+    else if(indata.comValue==3){
+         
+        double skmax = 0;
+        double pkmax = 0;
+        std::cout << "Computing..." <<std::endl;
+        Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
+        Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
+        Qtt.resize(f.nsize,f.nsize);
+        Qttm.resize(f.nsize,f.nsize);
+        for(int k=0; k<indata.npoints; k++){
+            xi = indata.xmin + k*rstep;
+            rvalues[k] = xi;
+            Fvalues[k] = f.Sk(xi, f.bp, Qtt, Qttm);
+
+            if (Fvalues[k] > skmax){
+                skmax = Fvalues[k];
+                pkmax = xi;
+            }
+
+             //Progress bar
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
+
+        }
+        std::cout << std::endl;
+
+        std::cout << "Done!\n" << std::endl;
+
+        //std::cout << std::fixed << std::setprecision(9) << "Peak of S()q= " << f.Density(f.bp) << " " << pkmax << std::endl;
+
+        //Write results to file
+        std::cout << "******************\nWriting results to file " << "output_Sq.txt" << std::endl;
+        std::cout << "Formatting:\n q \t S(q)\n\n";
+        WriteToFile("./output_Sq.txt", indata.npoints, &rvalues, &Fvalues);
+        std::cout << "******************" << std::endl;
+
+    }
+    else if (indata.comValue==4){    //Compute Gr
+
+        
+        double Grtemp;
+        
+        std::cout << "Computing..." << std::endl;
+        for(int k=0;k<indata.npoints;k++){
+            xi = indata.xmin + k*rstep;
+            rvalues[k] = xi;
+            //g(r)
+            if (xi < (nmax+1)*f.amin){
+                Grtemp = f.Gr(xi, f.bp, nmax,1);
+                Fvalues[k] = Grtemp;
+            }
+            else{
+                Grtemp = f.GrInv(xi, f.bp, 100,30);
+                Fvalues.at(k) = Grtemp;          
+            }
+
+            //Progress bar
+            ProgressBar(double(k)/(double(indata.npoints)-1),70);
+
+        }
+        
+        std::cout << std::endl;
+        std::cout << "Done!\n" << std::endl;
+
+        //Write results to file
+        std::cout << "******************\nWriting results to file " << "output_Gr.txt" << std::endl;
+        std::cout << "Formatting:\n r \t G(r)\n\n";
+        std::ofstream ofile;
+        ofile.open("output_Gr.txt");
+        for(int k=0;k<(int)indata.npoints;k++){
+            ofile << rvalues[k] << "\t" << Fvalues[k] << "\n";
         }
         ofile.close();
         std::cout << "******************" << std::endl;

@@ -75,7 +75,7 @@ class Quasi1d {
         xvalues /= sum;
 
         //Update internal bp
-        bp = bp0;
+        this->bp = bp0;
         return 0;
 
     }
@@ -84,7 +84,7 @@ class Quasi1d {
     void SetDensity(double rho){
         //Bolzano method to compute the pressure associated with that density
         double a = 0.000001;
-        double b=120;
+        double b=170;
   
         double c = a;
         while ((b-a) >= 0.0000001){
@@ -97,7 +97,7 @@ class Quasi1d {
             else  a = c;
         }
 
-        if (abs(c-120.0)<=0.0001){
+        if (abs(c-170.0)<=0.0001){
             std::cout << "WARNING: required density set too high, numerical errors might occur. Setting new density to " << Density(c) << std::endl;
         }
 
@@ -120,8 +120,8 @@ class Quasi1d {
         return -1.0/nsum;
     }
 
-    // Compute Gir(r) analiticamente para un nmax
-    double Gijr(double x, double bp0, int nmax, int i, int j){
+    // Compute Gij(x) analiticamente para un nmax
+    double Gijx(double x, double bp0, int nmax, int i, int j){
         if (bp0 != bp)  SetPressure(bp0);
         //Optimizacion: vemos en que capa de proximos vecinos cae x y ajustamos el valor de nmax si es necesario
 
@@ -135,8 +135,8 @@ class Quasi1d {
         return gij;
     }
 
-    // Compute global G(r)
-    std::vector<double> Gr(double x, double bp0, int nmax){
+    // Compute  G(x)
+    std::vector<double> Gx(double x, double bp0, int nmax){
         if (bp0 != bp)  SetPressure(bp0);
         std::vector<double> gtotal = std::vector<double>(5,0.0);
 
@@ -148,21 +148,21 @@ class Quasi1d {
         double gtemp = 0.0;
         double gmean = 0.0;
         
-        #pragma omp parallel for reduction(+:gmean) num_threads(16) schedule(dynamic)
+        //#pragma omp parallel for reduction(+:gmean) num_threads(16) schedule(dynamic)
         for (int ix=0; ix<nsize; ix++){
             for(int jx=ix; jx<nsize; jx++){
-                //gtemp = Gijr(x,bp0,nmax,ix,jx);
+                //gtemp = Gijx(x,bp0,nmax,ix,jx);
                 if (ix!=jx){
-                    gmean += 2.0*xvalues(ix)*xvalues(jx)*Gijr(x,bp0,nmax,ix,jx);
+                    gmean += 2.0*xvalues(ix)*xvalues(jx)*Gijx(x,bp0,nmax,ix,jx);
                 }
                 else{
-                    gmean += xvalues(ix)*xvalues(jx)*Gijr(x,bp0,nmax,ix,jx);
+                    gmean += xvalues(ix)*xvalues(jx)*Gijx(x,bp0,nmax,ix,jx);
                 } 
                 //Get partials G(r)
-                if(ix==0 && jx==0)          gtotal[1] = Gijr(x,bp0,nmax,ix,jx);
-                else if(ix==0 && jx==(nsize+1)/2) gtotal[2] = Gijr(x,bp0,nmax,ix,jx);
-                else if(ix==0 && jx==nsize-1)    gtotal[3] = Gijr(x,bp0,nmax,ix,jx);
-                else if(ix==(nsize+1)/2 && jx==(nsize+1)/2) gtotal[4] = Gijr(x,bp0,nmax,ix,jx);
+                if(ix==0 && jx==0)          gtotal[1] = Gijx(x,bp0,nmax,ix,jx);
+                else if(ix==0 && jx==(nsize+1)/2) gtotal[2] = Gijx(x,bp0,nmax,ix,jx);
+                else if(ix==0 && jx==nsize-1)    gtotal[3] = Gijx(x,bp0,nmax,ix,jx);
+                else if(ix==(nsize+1)/2 && jx==(nsize+1)/2) gtotal[4] = Gijx(x,bp0,nmax,ix,jx);
             }
 
         }
@@ -170,33 +170,33 @@ class Quasi1d {
         return gtotal;
     }
 
-    // Compute Gs real numbers
+    // Compute G(s)
     template<class T>
-    std::vector<T> Gs(T s, double bp0){
+    std::vector<T> Gs(T s, double bp0, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
         if (bp0 != bp)  SetPressure(bp0);
         std::vector<T> gtotal = std::vector<T>(5,0.0);
 
         for (int i=0; i<nsize; i++){
             for(int j=0; j<nsize; j++){
-                Qt(i,j) = Lmean*omega<T>(s+bp0,i,j);
-                Qtm(i,j) = -Qt(i,j);
-                if(i==j) Qtm(i,j) = 1.0+Qtm(i,j);
+                Qtt(i,j) = Lmean*omega<T>(s+bp0,i,j);
+                Qttm(i,j) = -Qtt(i,j);
+                if(i==j) Qttm(i,j) = 1.0+Qttm(i,j);
 
             }
         }
 
         //Invert matrix and all that
-        Qt = Qt*(Qtm.inverse());
+        Qtt = Qtt*(Qttm.inverse());
         T gmean = 0;
         double gmeanRE = 0;
         double gmeanIM = 0;
 
         double density = Density(bp);
         T dummy = 0.0;
-        #pragma omp parallel for reduction(+:gmeanRE,gmeanIM) num_threads(nprocs) private(dummy)
+        //#pragma omp parallel for reduction(+:gmeanRE,gmeanIM) num_threads(nprocs) private(dummy)
         for (int i=0; i<nsize; i++){
             for(int j=i; j<nsize; j++){
-                dummy = sqrt(xvalues(i)*xvalues(j))*Qt(i,j);
+                dummy = sqrt(xvalues(i)*xvalues(j))*Qtt(i,j);
                 if (i!=j){
                     gmeanRE += std::real(2.0*dummy);
                     gmeanIM += std::imag(2.0*dummy);
@@ -206,10 +206,10 @@ class Quasi1d {
                     gmeanIM += std::imag(dummy);
                 }
                 //Get partials G(r)
-                if(i==0 && j==0)          gtotal[1] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
-                else if(i==0 && j==(nsize+1)/2) gtotal[2] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
-                else if(i==0 && j==nsize-1)    gtotal[3] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
-                else if(i==(nsize+1)/2 && j==(nsize+1)/2) gtotal[4] = Qt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                if(i==0 && j==0)          gtotal[1] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                else if(i==0 && j==(nsize+1)/2) gtotal[2] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                else if(i==0 && j==nsize-1)    gtotal[3] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
+                else if(i==(nsize+1)/2 && j==(nsize+1)/2) gtotal[4] = Qtt(i,j)/sqrt(xvalues(i)*xvalues(j))/density;
             }
         }
         if constexpr (std::is_same_v<T, std::complex<double>>){
@@ -221,7 +221,7 @@ class Quasi1d {
         return gtotal;
     }
 
-    // Compute Gijs, I need to change that, of course //Esto si todo va bien realmente no lo necesitare aunque lo puedo dejar por si acaso
+    // Compute Gij(s)
     template<class T>
     T Gijs(T s,  double bp0, int ii, int jj){
         if (bp0 != bp)  SetPressure(bp0);
@@ -232,7 +232,7 @@ class Quasi1d {
         Eigen::Matrix<T,Eigen::Dynamic, Eigen::Dynamic> Qtm;
         Qt.resize(nsize,nsize);
         Qtm.resize(nsize,nsize);
-        #pragma omp parallel for num_threads(16)
+        //#pragma omp parallel for num_threads(nprocs)
         for (int i=0; i<nsize; i++){
             for(int j=i; j<nsize; j++){
                 Qt(i,j) = Lmean*omega<T>(s+bp0,i,j);
@@ -252,24 +252,24 @@ class Quasi1d {
         return gtotal/Density(bp);
     }
 
-    //Compute Sk
-    double Sk(double k, double bp0){
+    //Compute S(k)
+    double Sk(double k, double bp0, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
         if (bp0 != bp)  SetPressure(bp0);
         double stotal = 0;
 
-        return 1.0 + Density(bp0)*std::real(Gs<std::complex<double>>(std::complex<double>(0.0,k),bp0)[0]+Gs<std::complex<double>>(std::complex<double>(0.0,-k),bp0)[0]);
+        return 1.0 + Density(bp0)*std::real(Gs<std::complex<double>>(std::complex<double>(0.0,k),bp0,Qtt, Qttm)[0]+Gs<std::complex<double>>(std::complex<double>(0.0,-k),bp0, Qtt, Qttm)[0]);
 
     }
 
-    //Gr calculated from numerical Laplace inverse of G(s)
-    std::vector<double> GrInv(double t, double bp0, int ntr, int meuler){
+    //G(x) calculated from numerical Laplace inverse of G(s)
+    std::vector<double> GxInv(double t, double bp0, int ntr, int meuler, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
         double aa=30.0;
         double hh = M_PI/t;
 
         double uu = exp(aa/2.0)/t;
         double xx = aa/(2.0*t);
         //Sum[]
-        std::vector<std::complex<double>> Gstemp = Gs<std::complex<double>>(xx,bp0);
+        std::vector<std::complex<double>> Gstemp = Gs<std::complex<double>>(xx,bp0,Qtt, Qttm);
         std::complex<double> suma = Gstemp[0]/2.0;
         std::complex<double> suma1 = Gstemp[1]/2.0;
         std::complex<double> suma2 = Gstemp[2]/2.0;
@@ -278,7 +278,7 @@ class Quasi1d {
 
         std::complex<double> dummy;
         for (int i=1;i<ntr+1;i++){
-            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx, i*hh),bp0);
+            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx, i*hh),bp0,Qtt, Qttm);
             dummy = std::complex<double>(pow(-1,i),0);
             suma += dummy * Gstemp[0];
             suma1 += dummy * Gstemp[1];
@@ -310,7 +310,7 @@ class Quasi1d {
         for(int i=0;i<meuler+1;i++){
             double nn = ntr+i+1.0;
             dummy = pow(-1,nn);
-            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx,nn*hh),bp0);
+            Gstemp = Gs<std::complex<double>>(std::complex<double>(xx,nn*hh),bp0,Qtt, Qttm);
             su[i+1] = su[i] + dummy * Gstemp[0];
             su1[i+1] = su1[i] + dummy * Gstemp[1];
             su2[i+1] = su2[i] + dummy * Gstemp[2];
@@ -340,8 +340,8 @@ class Quasi1d {
 
     }
 
-        //Gr calculated from numerical Laplace inverse of G(s)
-    double GijrInv(double t, double bp0, int ntr, int meuler, int ii, int jj){
+    //Gij(x) calculated from numerical Laplace inverse of G(s)
+    double GijxInv(double t, double bp0, int ntr, int meuler, int ii, int jj){
         double aa=30.0;
         double hh = M_PI/t;
 
@@ -401,7 +401,121 @@ class Quasi1d {
         return gtotal;
     }
     
-    
+    //Compute G(r)
+    double Gr(double x, double bp0, int nmax, bool b2D=0){
+        if (bp0 != bp)  SetPressure(bp0);
+        double gtotal = 0.0;
+
+        //Optimizacion: vemos en que capa de proximos vecinos cae x y ajustamos el valor de nmax si es necesario
+        int nshell = int(x/amin);
+        if (nshell == 0) return gtotal;
+        else if (nshell < nmax)  nmax = nshell; //keep lowest n value because they are going to yield the same result
+        
+        //#pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
+        for (int ix=0; ix<nsize; ix++){
+            for(int jx=ix; jx<nsize; jx++){
+                if (ix!=jx){
+                    gtotal += 2.0*xvalues(ix)*xvalues(jx)*Gijx(sqrt(x*x-(y(ix)-y(jx))*(y(ix)-y(jx))),bp0,nmax,ix,jx);
+                }
+                else{
+                    gtotal += xvalues(ix)*xvalues(jx)*Gijx(sqrt(x*x-(y(ix)-y(jx))*(y(ix)-y(jx))),bp0,nmax,ix,jx);
+                } 
+            }
+
+        }
+        return gtotal;
+    }
+   
+   //G(r) calculated from numerical Laplace inverse of G(s)
+   double GrInv(double x, double bp0, int ntr, int meuler){
+        if (bp0 != bp)  SetPressure(bp0);
+        double gtotal = 0.0;
+
+        double dy2 = (eps/(nsize-1))*(eps/(nsize-1));
+
+        //#pragma omp parallel for reduction(+:gtotal) num_threads(16) schedule(dynamic)
+        for (int k=0; k<nsize; k++){
+                Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qtt;
+                Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> Qttm;
+                Qtt.resize(nsize,nsize);
+                Qttm.resize(nsize,nsize);
+                gtotal += GrkiInv(sqrt(x*x-dy2*k*k), bp0, k, ntr, meuler,Qtt,Qttm);
+                //std::cout << k << ", " << sqrt(x*x-dy2*k*k)<< ", " << bp0 << ","<<ntr << "," << meuler << ","  << gtotal << std::endl;
+        }
+        return gtotal;
+    }
+
+    //Gk(r) calculated from numerical Laplace inverse of G(s)
+    double GrkiInv(double t, double bp0, int k, int ntr, int meuler, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
+        double aa=30.0;
+        double hh = M_PI/t;
+
+        double uu = exp(aa/2.0)/t;
+        double xx = aa/(2.0*t);
+        //Sum[]
+        std::complex<double> Gstemp = Gkis<std::complex<double>>(xx,bp0,k,Qtt,Qttm);
+        std::complex<double> suma = Gstemp/2.0;
+
+        std::complex<double> dummy;
+        for (int i=1;i<ntr+1;i++){
+            Gstemp = Gkis<std::complex<double>>(std::complex<double>(xx, i*hh),bp0,k, Qtt, Qttm);
+            dummy = std::complex<double>(pow(-1,i),0);
+            suma += dummy * Gstemp;
+        }
+        //#su[]
+        std::vector<std::complex<double>> su(meuler+2,std::complex<double>(0,0));
+        su[0] = suma;
+
+        //#avgsu
+        //std::complex<double> avgsu(0,0);
+        std::complex<double> avgsu(0,0);
+
+        double bn;
+        for(int i=0;i<meuler+1;i++){
+            double nn = ntr+i+1.0;
+            dummy = pow(-1,nn);
+            Gstemp = Gkis<std::complex<double>>(std::complex<double>(xx,nn*hh),bp0,k, Qtt, Qttm);
+            su[i+1] = su[i] + dummy * Gstemp;
+
+            //Lo de abajo estaba originalmente en otro bucle
+            bn = binomialCoefficients(meuler,(i+1)-1);
+            //avgsu += bn*su[i];
+            avgsu += bn*su[i+1];
+
+        }
+        double pp = pow(2.0,meuler);
+        //std::complex<double> fun = uu*avgsu/(pp);
+        double fun = 0.0;
+        fun = real(uu*avgsu/(pp));
+        return fun;
+        //return 0.0;
+
+    }
+
+    template<class T>
+    T Gkis(T s, double bp0, int kidx, Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qtt,Eigen::Matrix<std::complex<double>,Eigen::Dynamic, Eigen::Dynamic> &Qttm){
+        if (bp0 != bp)  SetPressure(bp0);
+        T gtotal = 0.0;
+
+        for (int i=0; i<nsize; i++){
+            for(int j=0; j<nsize; j++){
+                //std::cout << i << " " << j << std::endl;
+                Qtt(i,j) = Lmean*omega<T>(s+bp0,i,j);
+                Qttm(i,j) = -Qtt(i,j);
+                if(i==j) Qttm(i,j) = 1.0+Qttm(i,j);
+            }
+        }
+
+        //Invert matrix and all that
+        Qtt = Qtt*(Qttm.inverse());
+        double density = Density(bp);
+        for (int i=0; i<nsize-kidx; i++){
+                gtotal += sqrt(xvalues(i)*xvalues(i+kidx))*Qtt(i,i+kidx)/density; //multiplicado por xi*xi y dividido entre sqrt(xi xj) da la simplificacion que sale aqui
+        }
+        if (kidx>0) gtotal = 2.0*gtotal;
+        return gtotal;
+    }
+   
    private:
 
     Eigen::Matrix<double,Eigen::Dynamic, Eigen::Dynamic> am;

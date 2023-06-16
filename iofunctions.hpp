@@ -99,8 +99,8 @@ int CheckData(InputData *indata){
     
         }
     }
-    if(indata->comValue!=1 && indata->comValue!=2 && indata->comValue!=3){
-        std::cout << "ERROR: Wrong choice of number" << std::endl;
+    if(indata->comValue!=1 && indata->comValue!=2 && indata->comValue!=3 && indata->comValue!=4){
+        std::cout << "ERROR: Wrong choice of computing quantity parameter" << std::endl;
         return 1;
         }
         else{
@@ -161,6 +161,22 @@ void WriteToFile(std::string outfile, int npoints, std::vector<double> *rvalues,
             ofile << rvalues->at(kk) << "\t" << Fvalues->at(kk) << "\n";
         }
         ofile.close();
+}
+
+//Progress bar
+void ProgressBar(double progress, int bwidth,double *kmax){
+    int pos = bwidth*progress;
+    if (progress > *kmax){
+        *kmax = progress;
+        std::cout << "[";
+        for (int i = 0; i < bwidth; ++i) {
+            if (i < pos) std::cout << "=";
+            else if (i == pos) std::cout << ">";
+            else std::cout << " ";
+        }
+        std::cout << "] " << int(progress * 100.0) << " %\r";
+        std::cout.flush();
+    }
 }
 
 //Progress bar
